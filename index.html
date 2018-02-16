@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Spell checker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+  <script type="text/javascript">
+    var API_KEY_NAME = `Ocp-Apim-Subscription-Key`;
+
+    function getApiKey() {
+        var key = localStorage.getItem(API_KEY_NAME) || $('#api-key').val();
+        localStorage.setItem(API_KEY_NAME, key);
+        return key;
+    }
+
+    $(document).ready(function() {
+        if (getApiKey().length > 0) {
+            $('#api-key').hide();
+            $('#reset-api-key').show();
+        }
+
+        $('form').on('submit', (e) => {
+            e.preventDefault();
+
+            var key = getApiKey();
+            var text = $('#text').val();
+            var params = `?text=${text}&mode=proof&mkt=en-US`;
+            var url = `https://api.cognitive.microsoft.com/bing/v7.0/spellcheck/${params}`;
+            var headers = {
+                [API_KEY_NAME]: key
+            };
+
+            $.get({ headers, url }, (data) => {
+                $('#results').html('').html('<pre>' + JSON.stringify(data, null, 2) + '</pre>');
+            })
+            .fail((response) => {
+                var error = response.responseJSON;
+                $('#results').html('').html('<pre style="color:red;font-weight:bold;">' + error.statusCode + ': ' + error.message + '</pre>');
+                localStorage.removeItem(API_KEY_NAME);
+            });
+        });
+
+        $('#reset-api-key').on('click', (e) => {
+            e.preventDefault();
+
+            localStorage.removeItem(API_KEY_NAME);
+
+            $('#api-key').show();
+            $('#reset-api-key').hide();
+        });
+
+    });
+  </script>
+</head>
+
+<body>
+
+    <form>
+        <h2>Spell check app</h2>
+        <input type="password" id="api-key" placeholder="API key" />
+        <input type="button" id="reset-api-key" value="Reset api key" style="display:none;"/>
+        <br/><br/>
+        <input type="text" id="text" placeholder="Input text" />
+        <br/>
+        <input type="submit" value="Submit" />
+    </form>
+
+    <h2>Result</h2>
+    <div id="results">
+
+    </div>
+</body>
+</html>
