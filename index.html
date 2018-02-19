@@ -9,6 +9,7 @@
 
   <script type="text/javascript">
     var API_KEY_NAME = `Ocp-Apim-Subscription-Key`;
+    var flaggedWords = {};
 
     function getApiKey() {
         var key = localStorage.getItem(API_KEY_NAME) || $('#api-key').val();
@@ -34,7 +35,31 @@
             };
 
             $.get({ headers, url }, (data) => {
-                $('#results').html('').html('<pre>' + JSON.stringify(data, null, 2) + '</pre>');
+                // Success, format and display response
+                var text = $('#text').val();
+                var formattedText = "";
+                flaggedWords = data.flaggedTokens;
+
+                for (var i = 0; i < flaggedWords.length; i++) {
+                    var obj = flaggedWords[i];
+                    var offset = obj.offset;
+                    var token = obj.token;
+
+                    if (i == 0) {
+                        formattedText += text.substring(0, offset);
+                    } else {
+                        var prevObj = flaggedWords[i-1];
+                        formattedText += text.substring((prevObj.offset + prevObj.token.length), offset);
+                    }
+
+                    formattedText += '<span class="flagged-word" data-index="'+i+'">'+token+'</span>';
+
+                    if (i == flaggedWords.length-1) {
+                        formattedText += text.substring((offset + token.length));
+                    }
+                }
+
+                $('#pretty-results').html('').html(formattedText);
             })
             .fail((response) => {
                 var error = response.responseJSON;
@@ -52,8 +77,41 @@
             $('#reset-api-key').hide();
         });
 
+        $('body').on('click', '.flagged-word', (e) => {
+            e.preventDefault();
+
+            var index = $(e.target).attr('data-index');
+            var token = flaggedWords[index].token;
+            var suggestions = flaggedWords[index].suggestions;
+
+            var suggestionHtml = '<button data-index="'+index+'" class="suggestion-btn" value="'+token+'">'+token+'</button>';
+            for (var i = 0; i < suggestions.length; i++) {
+                var suggestion = suggestions[i].suggestion;
+                suggestionHtml += '<button data-index="'+index+'" class="suggestion-btn" value="'+suggestion+'">'+suggestion+'</button>';
+            }
+
+            $('#suggestions').html('').html(suggestionHtml);
+        });
+
+        $('body').on('click', '.suggestion-btn', (e) => {
+            e.preventDefault();
+
+            var index = $(e.target).attr('data-index');
+            var value = e.target.value;
+
+            $('#pretty-results').find('.flagged-word[data-index="'+index+'"]').html(value);
+            $('#suggestions').html('');
+        });
+
     });
   </script>
+
+  <style>
+    .flagged-word {
+        background-color: yellow;
+        cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
@@ -63,13 +121,14 @@
         <input type="password" id="api-key" placeholder="API key" />
         <input type="button" id="reset-api-key" value="Reset api key" style="display:none;"/>
         <br/><br/>
-        <input type="text" id="text" placeholder="Input text" />
-        <br/>
         <input type="submit" value="Submit" />
     </form>
 
     <h2>Result</h2>
-    <div id="results">
+    <div id="suggestions" style="margin-bottom: 10px;">
+
+    </div>
+    <div id="pretty-results">
 
     </div>
 </body>
